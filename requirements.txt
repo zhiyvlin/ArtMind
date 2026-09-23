@@ -1,0 +1,13 @@
+# ArtMind - 艺术学习AI助手
+# Python依赖包
+
+# Flask框架
+flask>=2.3.0
+flask-cors>=4.0.0
+
+# LangChain核心组件
+langchain-core>=0.1.0
+
+# Coze LLM SDK
+coze-coding-dev-sdk>=0.5.0
+coze-coding-utils>=0.2.0
