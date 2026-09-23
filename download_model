@@ -1,0 +1,35 @@
+import requests
+import os
+
+files = [
+    "config.json",
+    "configuration.json",
+    "modules.json",
+    "model.safetensors",
+    "tokenizer.json",
+    "tokenizer_config.json",
+    "vocab.txt",
+    "special_tokens_map.json",
+    "1_Pooling/config.json",
+]
+
+base_url = "https://hf-mirror.com/BAAI/bge-small-zh-v1.5/resolve/main/"
+os.makedirs("./model_cache", exist_ok=True)
+
+for f in files:
+    url = base_url + f
+    print(f"正在下载: {f}")
+    try:
+        r = requests.get(url, stream=True, timeout=60)
+        r.raise_for_status()
+        total = int(r.headers.get("content-length", 0))
+        downloaded = 0
+        with open(f"./model_cache/{f}", "wb") as out:
+            for chunk in r.iter_content(chunk_size=8192):
+                out.write(chunk)
+                downloaded += len(chunk)
+        print(f"  完成: {f} ({downloaded / 1024 / 1024:.1f} MB)")
+    except Exception as e:
+        print(f"  失败: {f} -> {e}")
+
+print("\n所有文件下载完毕！")
