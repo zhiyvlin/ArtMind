@@ -36,12 +36,11 @@ DATA_FOLDER = os.path.join(os.path.dirname(__file__), 'data')
 os.makedirs(DATA_FOLDER, exist_ok=True)
 
 CONVERSATIONS_FILE = os.path.join(DATA_FOLDER, 'conversations.json')
-RELATION_GRAPH_FILE = os.path.join(DATA_FOLDER, 'relation_graph.json')
 
 # AI 配置
 API_KEY = os.environ.get('API_KEY', '')
 API_BASE_URL = os.environ.get('API_BASE_URL', '')
-MODEL_NAME = os.environ.get('MODEL_NAME', 'qwen-vl-plus')
+MODEL_NAME = os.environ.get('MODEL_NAME', '')
 
 USE_MOCK = not API_KEY
 
@@ -59,7 +58,7 @@ else:
 # 系统提示词
 # ============================================================
 SYSTEM_PROMPTS = {
-    'read': """你是ArtMind"艺境"智能艺术史学习助手，水平不亚于艺术史学教授，专注于作品赏析。当前处于「阅画」模式。
+     """你是ArtMind"艺境"智能艺术史学习助手，水平不亚于艺术史学教授，专注于作品赏析。
 请对用户提供的画作进行详细分析，包括：
 1. 基本介绍（作者、年代、尺寸、材质、现藏地）
 2. 构图分析（布局、视觉引导、比例）
@@ -68,14 +67,14 @@ SYSTEM_PROMPTS = {
 5. 历史语境（时代背景、艺术流派）
 6. 艺术价值（地位、影响）
 回答要通俗易懂，同时适当使用专业术语并解释。末尾可提出2-3个思考问题。""",
-    'think': """你是ArtMind"艺境"智能艺术史学习助手，水平不亚于一位善于启发的艺术导师。当前处于「思画」模式。
+     """
 请针对之前讲解的内容向学生提问，检验理解程度。问题应涉及：
 1. 构图与空间处理
 2. 色彩与笔触技巧
 3. 母题与象征意义
 4. 历史与风格比较
 提问要循序渐进，由浅入深。先提一个具体问题，等学生回答后再继续。""",
-    'research': """你是ArtMind"艺境"智能艺术史学习助手，水平不亚于一位艺术史研究学者。当前处于「研画」模式。
+     """
 请进行深度学术探讨，包括：
 1. 历史纵深（更广阔的时代脉络）
 2. 思想解读（哲学、美学观念）
@@ -106,11 +105,6 @@ def load_conversations():
 def save_conversations(data):
     save_json(CONVERSATIONS_FILE, data)
 
-def load_relation_graph():
-    return load_json(RELATION_GRAPH_FILE, {"nodes": [], "edges": []})
-
-def save_relation_graph(data):
-    save_json(RELATION_GRAPH_FILE, data)
 
 # ============================================================
 # 模拟响应
@@ -194,8 +188,9 @@ def health():
 @app.route('/api/chat', methods=['POST'])
 def chat():
     # 1. 获取前端传来的消息和模式
-    user_message = request.json.get('message')
-    mode = request.json.get('mode', 'read')
+    # 1. 获取前端传来的消息
+    data = request.get_json() or {}
+    user_message = data.get('message', '')
 
     # 2. 检查消息是否为空
     if not user_message:
@@ -238,7 +233,10 @@ def chat():
     # ==========================================
     # 【构建 System Prompt】结合模式 + RAG 上下文
     # ==========================================
-    base_prompt = SYSTEM_PROMPTS.get(mode, SYSTEM_PROMPTS['read'])
+    base_prompt = """你是 ArtMind 艺术学习助手，帮助用户理解艺术史、艺术作品、
+                艺术理论与美学问题。请根据用户的问题提供准确、清晰、易懂的回答；
+                适当解释专业术语，必要时结合历史背景、构图、色彩、技法和艺术思想展开分析。
+                如果知识库提供了相关资料，优先结合资料回答；资料不足时，请明确说明。"""
     if rag_context:
         system_prompt = f"""{base_prompt}
 
@@ -280,7 +278,8 @@ def chat():
         )
         reply = response.choices[0].message.content
     else:
-        reply = generate_mock_response(user_message, mode)
+        reply = ("当前尚未配置 AI API Key，暂时无法生成真实回答。"
+    "请配置 API_KEY、API_BASE_URL 和 MODEL_NAME 后重试。")
 
     # 4. 返回结果给前端
     return jsonify({'success': True, 'reply': reply})
@@ -373,56 +372,8 @@ def search_conversations():
     return jsonify({'results': results, 'query': query})
 
 # ---------- 关系网 ----------
-@app.route('/api/relation-graph', methods=['GET'])
-def get_relation_graph():
-    graph = load_relation_graph()
-    return jsonify(graph)
 
-@app.route('/api/relation-graph/nodes', methods=['POST'])
-def add_relation_node():
-    data = request.get_json() or {}
-    graph = load_relation_graph()
-    node = {
-        'id': str(uuid.uuid4()),
-        'name': data.get('name', ''),
-        'type': data.get('type', 'artist'),
-        'description': data.get('description', ''),
-        'created_at': datetime.now().isoformat()
-    }
-    graph['nodes'].append(node)
-    save_relation_graph(graph)
-    return jsonify({'node': node})
 
-@app.route('/api/relation-graph/edges', methods=['POST'])
-def add_relation_edge():
-    data = request.get_json() or {}
-    graph = load_relation_graph()
-    edge = {
-        'id': str(uuid.uuid4()),
-        'source': data.get('source', ''),
-        'target': data.get('target', ''),
-        'relation': data.get('relation', 'related_to'),
-        'description': data.get('description', ''),
-        'created_at': datetime.now().isoformat()
-    }
-    graph['edges'].append(edge)
-    save_relation_graph(graph)
-    return jsonify({'edge': edge})
-
-@app.route('/api/relation-graph/node/<node_id>', methods=['DELETE'])
-def delete_relation_node(node_id):
-    graph = load_relation_graph()
-    graph['nodes'] = [n for n in graph['nodes'] if n['id'] != node_id]
-    graph['edges'] = [e for e in graph['edges'] if e['source'] != node_id and e['target'] != node_id]
-    save_relation_graph(graph)
-    return jsonify({'status': 'deleted'})
-
-@app.route('/api/relation-graph/edge/<edge_id>', methods=['DELETE'])
-def delete_relation_edge(edge_id):
-    graph = load_relation_graph()
-    graph['edges'] = [e for e in graph['edges'] if e['id'] != edge_id]
-    save_relation_graph(graph)
-    return jsonify({'status': 'deleted'})
 
 # ============================================================
 # 启动
