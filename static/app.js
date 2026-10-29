@@ -32,13 +32,7 @@ const el = {
     uploadBtn: document.getElementById('uploadBtn'),
     fileInput: document.getElementById('fileInput'),
     uploadedImages: document.getElementById('uploadedImages'),
-    openNetworkBtn: document.getElementById('openNetworkBtn'),
-    viewNetworkBtn: document.getElementById('viewNetworkBtn'),
-    networkModal: document.getElementById('networkModal'),
-    closeNetworkModal: document.getElementById('closeNetworkModal'),
-    networkList: document.getElementById('networkList'),
     chatTitle: document.getElementById('chatTitle'),
-    modeButtons: document.querySelectorAll('.mode-btn')
 };
 
 // ========== API 基础路径 ==========
@@ -87,13 +81,6 @@ function setupEventListeners() {
     });
     document.addEventListener('click', () => el.versionDropdown.classList.remove('show'));
 
-    el.modeButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            el.modeButtons.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            state.currentMode = btn.dataset.mode;
-        });
-    });
 
     el.uploadBtn.addEventListener('click', () => el.fileInput.click());
     el.fileInput.addEventListener('change', handleFileUpload);
@@ -101,13 +88,7 @@ function setupEventListeners() {
     el.openNetworkBtn.addEventListener('click', openNetworkModal);
     el.viewNetworkBtn.addEventListener('click', openNetworkModal);
     el.closeNetworkModal.addEventListener('click', closeNetworkModal);
-    el.networkModal.addEventListener('click', (e) => {
-        if (e.target === el.networkModal) closeNetworkModal();
-    });
-
-    l.searechInput.addEventListener('input', filterChatList);
 }
-
 // ========== 自动调整文本框高度 ==========
 function autoResizeTextarea() {
     el.messageInput.addEventListener('input', function() {
@@ -500,40 +481,8 @@ function handleFileUpload(event) {
     reader.readAsDataURL(file);
 }
 
-// ========== 关系网模态框 ==========
-async function openNetworkModal() {
-    el.networkModal.classList.add('show');
-    try {
-        const res = await fetch(`${API_BASE}/api/relation-graph`);
-        const data = await res.json();
-        renderNetworkList(data.nodes || [], data.edges || []);
-    } catch (e) {
-        console.error('加载关系网失败:', e);
-        el.networkList.innerHTML = '<div style="color:var(--text-muted)">暂无关系网数据</div>';
-    }
-}
 
-function closeNetworkModal() {
-    el.networkModal.classList.remove('show');
-}
 
-function renderNetworkList(nodes, edges) {
-    if (!nodes || nodes.length === 0) {
-        el.networkList.innerHTML = '<div style="color:var(--text-muted)">暂无关系网节点</div>';
-        return;
-    }
-    el.networkList.innerHTML = nodes.map(node => `
-        <div class="network-item">
-            <div class="network-info">
-                <div class="network-name">${escapeHtml(node.name)}</div>
-                <div class="network-meta">类型: ${node.type || '未知'} · 创建于 ${node.created_at || ''}</div>
-            </div>
-            <div class="network-actions">
-                <button class="network-btn">查看关联</button>
-            </div>
-        </div>
-    `).join('');
-}
 
 // ========== 工具函数 ==========
 function escapeHtml(text) {
